@@ -63,7 +63,7 @@ Search AWS Managed Prefix Lists by IP address or partner name and generate detai
 ---
 
 ### 2. `find_large_customer_prefix_entries.py`
-Search AWS **customer-managed** Prefix Lists for any IP block larger than a `/29` (i.e., `/28`, `/27`, etc.). Supports optional prefix list filtering by name.
+Search AWS **customer-managed** Prefix Lists for any IP block larger than a specified CIDR (e.g., `/29`, `/28`, etc.). Supports optional prefix list filtering by name and exclusion of specific lists.
 
 #### Features:
 - **Customer-Managed Lists Only:**  
@@ -71,6 +71,12 @@ Search AWS **customer-managed** Prefix Lists for any IP block larger than a `/29
 
 - **Filter by Prefix List Name:**  
   Use the `--plfilter` option to search only PLs whose name contains a specific string (case-insensitive).
+
+- **Exclude Specific Prefix Lists:**  
+  Use the `--plexclude` option to exclude PLs whose name contains a specific string (case-insensitive).
+
+- **Set Maximum CIDR Block Size:**  
+  Use the `--maxcidr` option to define the largest allowable CIDR (default is `/29`). Any prefix list entry with a block larger than this value will be reported.
 
 - **Custom AWS Profile and Region:**  
   Optionally specify an AWS CLI profile and region to target specific accounts or regions.
@@ -91,6 +97,16 @@ Search AWS **customer-managed** Prefix Lists for any IP block larger than a `/29
 **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor"):**
 ```bash
 ./find_large_customer_prefix_entries.py --plfilter "ExampleVendor"
+```
+
+**Exclude Prefix Lists by Name (ignore PLs containing "Deprecated"):**
+```bash
+./find_large_customer_prefix_entries.py --plexclude "Deprecated"
+```
+
+**Find all IP blocks larger than `/28`:**
+```bash
+./find_large_customer_prefix_entries.py --maxcidr /28
 ```
 
 **Specify AWS Profile and Region:**
