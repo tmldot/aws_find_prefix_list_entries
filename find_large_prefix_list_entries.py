@@ -1,23 +1,27 @@
 #!/usr/bin/env python3
 """
 Description:
-    Searches all customer-managed AWS Managed Prefix List entries for any IP block larger than a /29.
-    A block is considered larger than /29 if its prefix length is less than 29 (e.g., /28, /27, etc.).
+    Searches all customer-managed AWS Managed Prefix List entries for any IP block larger than a specified CIDR.
+    A block is considered larger than the specified CIDR if its prefix length is less than the provided value 
+    (e.g., if --maxcidr is set to /29, then any block with a prefix length less than 29, such as /28, /27, etc., is a match).
 
     The script only processes prefix lists owned by the current AWS account.
-    Optionally, you can filter prefix lists by name using the --plfilter parameter.
+    Optionally, you can include only those prefix lists whose name contains a specific string using the --plfilter parameter,
+    and/or exclude those whose name contains a specific string using the --plexclude parameter.
 
     The report is printed to the console and can optionally be saved as a CSV file.
 
 Usage:
-    python find_large_customer_prefix_entries.py [--csv [filename]] [--profile PROFILE]
-        [--region REGION] [--quiet] [--plfilter FILTER]
+    python find_large_prefix_list_entries.py [--csv [filename]] [--profile PROFILE]
+        [--region REGION] [--quiet] [--plfilter FILTER] [--plexclude EXCLUDE] [--maxcidr MAXCIDR]
 
     --csv: Optionally output the report to a CSV file. If no filename is provided, a default one is generated.
     --profile: AWS CLI profile to use.
     --region: AWS region to use.
     --quiet: Suppress intermediate console output (only critical messages are shown).
-    --plfilter: Only search prefix lists whose name contains this string (case-insensitive).
+    --plfilter: Only include prefix lists whose name contains this string (case-insensitive).
+    --plexclude: Exclude prefix lists whose name contains this string (case-insensitive).
+    --maxcidr: Specify the maximum CIDR prefix (e.g., /29 or 29). Any IP block with a prefix length smaller than this value is considered a match. Default is 29.
 
 Requirements:
     - Python 3.6+
@@ -63,11 +67,19 @@ def setup_logging(quiet=False):
     logging.info(f"Logging initiated. Output log file: {logfile}")
     return logfile
 
-def get_prefix_list_details(ec2_client, account_id, pl_filter=None):
+def get_prefix_list_details(ec2_client, account_id, pl_filter=None, pl_exclude=None):
     """
     Retrieves all managed prefix lists and returns a dictionary mapping
     PrefixListId to PrefixListName for customer-managed lists only.
-    Optionally filters prefix lists by name if pl_filter is provided.
+    Optionally includes only those prefix lists whose name contains the provided filter string (pl_filter)
+    and/or excludes those whose name contains the provided exclusion string (pl_exclude). Both comparisons
+    are case-insensitive.
+    
+    :param ec2_client: A boto3 EC2 client.
+    :param account_id: The current AWS account ID.
+    :param pl_filter: Optional filter string to include only prefix lists whose name contains this substring.
+    :param pl_exclude: Optional exclusion string to omit prefix lists whose name contains this substring.
+    :return: Dictionary with key as PrefixListId and value as PrefixListName.
     """
     logging.info("Retrieving all managed prefix lists...")
     response = ec2_client.describe_managed_prefix_lists()
@@ -82,8 +94,11 @@ def get_prefix_list_details(ec2_client, account_id, pl_filter=None):
         # Only include customer-managed lists (OwnerId equals our account id)
         if owner_id != account_id:
             continue
-        # If a filter is provided, check that the prefix list name contains the filter string.
+        # If a filter is provided, only include PLs whose name contains the filter string.
         if pl_filter and pl_filter.lower() not in pl_name.lower():
+            continue
+        # If an exclusion term is provided, skip PLs whose name contains that string.
+        if pl_exclude and pl_exclude.lower() in pl_name.lower():
             continue
         pl_details[pl_id] = pl_name
 
@@ -93,10 +108,15 @@ def get_prefix_list_details(ec2_client, account_id, pl_filter=None):
         logging.info(f"Found {len(pl_details)} customer-managed prefix list(s) matching criteria.")
     return pl_details
 
-def search_large_prefix_entries(ec2_client, prefix_list_id):
+def search_large_prefix_entries(ec2_client, prefix_list_id, max_cidr):
     """
-    For a given prefix list, retrieves entries and filters those with an IP block larger than /29.
+    For a given prefix list, retrieves entries and filters those with an IP block larger than the specified CIDR.
     Returns a list of matching entries.
+    
+    :param ec2_client: A boto3 EC2 client.
+    :param prefix_list_id: The ID of the managed prefix list.
+    :param max_cidr: An integer representing the maximum CIDR prefix (e.g., 29 for /29). 
+                     Any IP block with a prefix length smaller than this value is considered a match.
     """
     logging.info(f"Processing prefix list: {prefix_list_id}")
     try:
@@ -112,7 +132,7 @@ def search_large_prefix_entries(ec2_client, prefix_list_id):
         if cidr:
             try:
                 network = ipaddress.ip_network(cidr, strict=False)
-                if network.prefixlen < 29:
+                if network.prefixlen < max_cidr:
                     matching_entries.append(entry)
             except ValueError as ve:
                 logging.error(f"Invalid CIDR '{cidr}' in prefix list {prefix_list_id}: {ve}")
@@ -128,7 +148,7 @@ def print_report(results_summary, pl_details):
     Prints a summary report to the console.
     """
     report_lines = []
-    report_lines.append("\nFINAL REPORT: IP blocks larger than /29")
+    report_lines.append("\nFINAL REPORT: IP blocks larger than specified CIDR")
     report_lines.append("=" * 60)
     
     if not results_summary:
@@ -170,15 +190,24 @@ def write_csv_report(results_summary, pl_details, csv_filename):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Search customer-managed AWS Managed Prefix Lists for IP blocks larger than /29."
+        description="Search customer-managed AWS Managed Prefix Lists for IP blocks larger than a specified CIDR."
     )
     parser.add_argument("--csv", nargs="?", const=True, help="Output CSV report. Optionally specify a filename.")
     parser.add_argument("--profile", help="AWS CLI profile to use")
     parser.add_argument("--region", help="AWS region to use")
     parser.add_argument("--quiet", action="store_true", help="Suppress intermediate console output")
-    parser.add_argument("--plfilter", help="Only search prefix lists whose name contains this string (case-insensitive)")
+    parser.add_argument("--plfilter", help="Only include prefix lists whose name contains this string (case-insensitive)")
+    parser.add_argument("--plexclude", help="Exclude prefix lists whose name contains this string (case-insensitive)")
+    parser.add_argument("--maxcidr", help="Specify the maximum CIDR prefix (e.g., /29 or 29). Any IP block with a prefix length smaller than this value is considered a match. Default is 29.", default="29")
     
     args = parser.parse_args()
+    
+    # Convert --maxcidr value to an integer (strip any leading '/' if present)
+    try:
+        maxcidr_value = int(args.maxcidr.replace("/", ""))
+    except Exception as e:
+        logging.error("Invalid --maxcidr value. Please specify a number like 29 or /29.")
+        sys.exit(1)
     
     setup_logging(quiet=args.quiet)
     
@@ -202,13 +231,13 @@ def main():
         logging.error(f"Failed to get AWS account ID: {e}")
         sys.exit(1)
     
-    pl_details = get_prefix_list_details(ec2_client, account_id, pl_filter=args.plfilter)
+    pl_details = get_prefix_list_details(ec2_client, account_id, pl_filter=args.plfilter, pl_exclude=args.plexclude)
     if not pl_details:
         sys.exit(1)
     
     results_summary = {}
     for pl_id in pl_details:
-        matching_entries = search_large_prefix_entries(ec2_client, pl_id)
+        matching_entries = search_large_prefix_entries(ec2_client, pl_id, maxcidr_value)
         if matching_entries:
             results_summary[pl_id] = matching_entries
         logging.info("-" * 60)
