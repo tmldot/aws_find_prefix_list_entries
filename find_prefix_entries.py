@@ -10,13 +10,13 @@ Description:
       
 Usage:
     Search by name (Description):
-        python find_prefix_entries.py --name "Liberty" [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
+        python find_prefix_entries.py --name "ExampleVendor" [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
         
     Search by IP (Cidr):
         python find_prefix_entries.py --ip "192.168.1" [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
         
     To run in quiet mode (suppress intermediate output):
-        python find_prefix_entries.py --name "Liberty" --quiet [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
+        python find_prefix_entries.py --name "ExampleVendor" --quiet [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
     
     (If no profile/region is provided, the default is used)
 
