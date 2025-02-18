@@ -7,11 +7,14 @@ This repository contains Python CLI tools for working with AWS Managed Prefix Li
 ## Tools Included
 
 ### 1. `find_prefix_entries.py`
-Search AWS Managed Prefix Lists by IP address or partner name and generate detailed reports. Supports optional CSV output.
+Search AWS Managed Prefix Lists by IP address or partner name and generate detailed reports. Supports optional CSV output and filtering by prefix list name.
 
 #### Features:
 - **Search by Name or IP:**  
   Search for prefix list entries by `Description` (case-insensitive) or `Cidr` (supports partial matches).
+
+- **Filter by Prefix List Name:**  
+  Use the `--plfilter` option to search only PLs whose name contains a specific string (case-insensitive).
 
 - **Custom AWS Profile and Region:**  
   Optionally specify an AWS CLI profile and region to target specific accounts or regions.
@@ -35,6 +38,11 @@ Search AWS Managed Prefix Lists by IP address or partner name and generate detai
 **Search by IP (supports partial match):**
 ```bash
 ./find_prefix_entries.py --ip "192.168.1"
+```
+
+**Filter Prefix Lists by Name (only check PLs containing "ExampleVendor"):**
+```bash
+./find_prefix_entries.py --name "ExampleVendor" --plfilter "ExampleVendor"
 ```
 
 **Specify AWS Profile and Region:**
