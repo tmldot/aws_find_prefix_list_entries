@@ -32,6 +32,9 @@ README.md
 - **Audit Prefix Lists by CIDR Size**  
   Use `--maxcidr` to specify the maximum CIDR block allowed. Any entry larger than this is reported.
 
+- **Only Search Customer-Managed Prefix Lists**  
+  The tool automatically filters to only include prefix lists owned by the AWS account running the query.
+
 - **Specify AWS Profile and Region**  
   Optionally target specific AWS accounts or regions using AWS CLI profiles.
 
@@ -43,49 +46,89 @@ README.md
 
 ## Usage
 
-### **Search by Name (in Description field)**
+### **General Usage Format**
 ```bash
-./plutils.py --name "ExampleVendor"
+./plutils.py <subcommand> [options]
 ```
 
-### **Search by IP (supports partial match)**
+### **Available Subcommands:**
+- `search` - Search prefix list entries by name or IP.
+- `audit` - Audit prefix lists based on CIDR block size.
+
+### **Search Subcommand**
+
+#### **Search by Name (in Description field)**
 ```bash
-./plutils.py --ip "192.168.1"
+./plutils.py search --name "ExampleVendor"
 ```
 
-### **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor")**
+#### **Search by IP (supports partial match)**
 ```bash
-./plutils.py --name "ExampleVendor" --plfilter "ExampleVendor"
+./plutils.py search --ip "192.168.1"
 ```
 
-### **Exclude Prefix Lists by Name (ignore PLs containing "Deprecated")**
+#### **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor")**
 ```bash
-./plutils.py --plexclude "Deprecated"
+./plutils.py search --name "ExampleVendor" --plfilter "ExampleVendor"
 ```
 
-### **Find all IP blocks larger than `/29` (default)**
+#### **Exclude Prefix Lists by Name (ignore PLs containing "Deprecated")**
 ```bash
-./plutils.py --maxcidr /29
+./plutils.py search --plexclude "Deprecated"
 ```
 
-### **Find all IP blocks larger than `/28`**
+#### **Specify AWS Profile and Region**
 ```bash
-./plutils.py --maxcidr /28
+./plutils.py search --profile myprofile --region us-east-1
 ```
 
-### **Specify AWS Profile and Region**
+#### **Quiet Mode (only logs critical messages to console)**
 ```bash
-./plutils.py --profile myprofile --region us-east-1
+./plutils.py search --quiet
 ```
 
-### **Quiet Mode (only logs critical messages to console)**
+#### **Export Search Results to CSV**
 ```bash
-./plutils.py --quiet
+./plutils.py search --csv results.csv
 ```
 
-### **Export Results to CSV**
+---
+
+### **Audit Subcommand**
+
+#### **Find all IP blocks larger than `/29` (default)**
 ```bash
-./plutils.py --csv results.csv
+./plutils.py audit --maxcidr /29
+```
+
+#### **Find all IP blocks larger than `/28`**
+```bash
+./plutils.py audit --maxcidr /28
+```
+
+#### **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor")**
+```bash
+./plutils.py audit --plfilter "ExampleVendor"
+```
+
+#### **Exclude Prefix Lists by Name (ignore PLs containing "Deprecated")**
+```bash
+./plutils.py audit --plexclude "Deprecated"
+```
+
+#### **Specify AWS Profile and Region**
+```bash
+./plutils.py audit --profile myprofile --region us-east-1
+```
+
+#### **Quiet Mode (only logs critical messages to console)**
+```bash
+./plutils.py audit --quiet
+```
+
+#### **Export Audit Results to CSV**
+```bash
+./plutils.py audit --csv audit_results.csv
 ```
 
 ---
