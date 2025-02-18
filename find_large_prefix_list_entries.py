@@ -5,19 +5,21 @@ Description:
     A block is considered larger than /29 if its prefix length is less than 29 (e.g., /28, /27, etc.).
 
     The script only processes prefix lists owned by the current AWS account.
-    Optionally, you can filter prefix lists by name using the --plfilter parameter.
+    Optionally, you can include only those prefix lists whose name contains a specific string using the --plfilter parameter,
+    and/or exclude those whose name contains a specific string using the --plexclude parameter.
 
     The report is printed to the console and can optionally be saved as a CSV file.
 
 Usage:
-    python find_large_customer_prefix_entries.py [--csv [filename]] [--profile PROFILE]
-        [--region REGION] [--quiet] [--plfilter FILTER]
+    python find_large_prefix_list_entries.py [--csv [filename]] [--profile PROFILE]
+        [--region REGION] [--quiet] [--plfilter FILTER] [--plexclude EXCLUDE]
 
     --csv: Optionally output the report to a CSV file. If no filename is provided, a default one is generated.
     --profile: AWS CLI profile to use.
     --region: AWS region to use.
     --quiet: Suppress intermediate console output (only critical messages are shown).
-    --plfilter: Only search prefix lists whose name contains this string (case-insensitive).
+    --plfilter: Only include prefix lists whose name contains this string (case-insensitive).
+    --plexclude: Exclude prefix lists whose name contains this string (case-insensitive).
 
 Requirements:
     - Python 3.6+
@@ -63,11 +65,19 @@ def setup_logging(quiet=False):
     logging.info(f"Logging initiated. Output log file: {logfile}")
     return logfile
 
-def get_prefix_list_details(ec2_client, account_id, pl_filter=None):
+def get_prefix_list_details(ec2_client, account_id, pl_filter=None, pl_exclude=None):
     """
     Retrieves all managed prefix lists and returns a dictionary mapping
     PrefixListId to PrefixListName for customer-managed lists only.
-    Optionally filters prefix lists by name if pl_filter is provided.
+    Optionally includes only those prefix lists whose name contains the provided filter string (pl_filter)
+    and/or excludes those whose name contains the provided exclusion string (pl_exclude). Both comparisons
+    are case-insensitive.
+    
+    :param ec2_client: A boto3 EC2 client.
+    :param account_id: The current AWS account ID.
+    :param pl_filter: Optional filter string to include only prefix lists whose name contains this substring.
+    :param pl_exclude: Optional exclusion string to omit prefix lists whose name contains this substring.
+    :return: Dictionary with key as PrefixListId and value as PrefixListName.
     """
     logging.info("Retrieving all managed prefix lists...")
     response = ec2_client.describe_managed_prefix_lists()
@@ -82,8 +92,11 @@ def get_prefix_list_details(ec2_client, account_id, pl_filter=None):
         # Only include customer-managed lists (OwnerId equals our account id)
         if owner_id != account_id:
             continue
-        # If a filter is provided, check that the prefix list name contains the filter string.
+        # If a filter is provided, only include PLs whose name contains the filter string.
         if pl_filter and pl_filter.lower() not in pl_name.lower():
+            continue
+        # If an exclusion term is provided, skip PLs whose name contains that string.
+        if pl_exclude and pl_exclude.lower() in pl_name.lower():
             continue
         pl_details[pl_id] = pl_name
 
@@ -176,7 +189,8 @@ def main():
     parser.add_argument("--profile", help="AWS CLI profile to use")
     parser.add_argument("--region", help="AWS region to use")
     parser.add_argument("--quiet", action="store_true", help="Suppress intermediate console output")
-    parser.add_argument("--plfilter", help="Only search prefix lists whose name contains this string (case-insensitive)")
+    parser.add_argument("--plfilter", help="Only include prefix lists whose name contains this string (case-insensitive)")
+    parser.add_argument("--plexclude", help="Exclude prefix lists whose name contains this string (case-insensitive)")
     
     args = parser.parse_args()
     
@@ -202,7 +216,7 @@ def main():
         logging.error(f"Failed to get AWS account ID: {e}")
         sys.exit(1)
     
-    pl_details = get_prefix_list_details(ec2_client, account_id, pl_filter=args.plfilter)
+    pl_details = get_prefix_list_details(ec2_client, account_id, pl_filter=args.plfilter, pl_exclude=args.plexclude)
     if not pl_details:
         sys.exit(1)
     
