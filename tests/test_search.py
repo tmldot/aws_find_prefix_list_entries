@@ -9,7 +9,6 @@ class TestSearch(unittest.TestCase):
             {'Description': 'examplevendor internal', 'Cidr': '172.16.0.0/16'},
             {'Description': 'Not related', 'Cidr': '8.8.8.0/24'},
         ]
-        # Should return the two entries with "examplevendor" in the Description.
         result = search_entries_by_field(entries, "examplevendor", "Description")
         self.assertEqual(len(result), 2)
 
@@ -20,7 +19,6 @@ class TestSearch(unittest.TestCase):
             {'Description': 'Network C', 'Cidr': '172.16.0.0/28'},
             {'Description': 'Network D', 'Cidr': '8.8.8.8/32'},
         ]
-        # Searching for "10.0" in the Cidr field should return one entry.
         result = search_entries_by_field(entries, "10.0", "Cidr")
         self.assertEqual(len(result), 1)
 
