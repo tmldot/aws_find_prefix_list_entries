@@ -10,15 +10,24 @@ Description:
       
 Usage:
     Search by name (Description):
-        python find_prefix_entries.py --name "ExampleVendor" [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
+        python find_prefix_entries.py --name "ExampleVendor" [--plfilter FILTER] [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
         
     Search by IP (Cidr):
-        python find_prefix_entries.py --ip "192.168.1" [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
+        python find_prefix_entries.py --ip "192.168.1" [--plfilter FILTER] [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
         
     To run in quiet mode (suppress intermediate output):
-        python find_prefix_entries.py --name "ExampleVendor" --quiet [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
+        python find_prefix_entries.py --name "ExampleVendor" --quiet [--plfilter FILTER] [--profile myprofile] [--region us-east-1] [--csv [filename.csv]]
     
     (If no profile/region is provided, the default is used)
+
+Arguments:
+    --name NAME           Search term for prefix list description (case-insensitive)
+    --ip IP               Search term for IP address; supports partial match up to full CIDR notation
+    -q, --quiet           Suppress intermediate screen output (final report will still be printed)
+    --profile PROFILE     AWS CLI profile to use
+    --region REGION       AWS region to use
+    --csv [CSV]           Output CSV report. Optionally specify a filename.
+    --plfilter PLFILTER   Only search prefix lists whose name contains this string (case-insensitive)
 
 Requirements:
     - Python 3.6+
@@ -71,12 +80,14 @@ def setup_logging(quiet=False, search_value=None):
     logging.info(f"Logging initiated. Output log file: {logfile}")
     return logfile
 
-def get_prefix_list_details(ec2_client):
+def get_prefix_list_details(ec2_client, pl_filter=None):
     """
     Retrieves all managed prefix lists and returns a dictionary mapping
     prefix list ID to its name.
     
     :param ec2_client: A boto3 EC2 client.
+    :param pl_filter: Optional filter string. Only prefix lists whose name contains this
+                      substring (case-insensitive) will be returned.
     :return: Dictionary with key as PrefixListId and value as PrefixListName.
     """
     logging.info("Retrieving all managed prefix lists...")
@@ -86,12 +97,16 @@ def get_prefix_list_details(ec2_client):
     for pl in prefix_lists:
         pl_id = pl.get('PrefixListId')
         pl_name = pl.get('PrefixListName', 'N/A')
-        if pl_id:
-            pl_details[pl_id] = pl_name
+        if not pl_id:
+            continue
+        # If a filter is provided, only include PLs whose name contains the filter string.
+        if pl_filter and pl_filter.lower() not in pl_name.lower():
+            continue
+        pl_details[pl_id] = pl_name
     if not pl_details:
-        logging.error("No managed prefix lists found.")
+        logging.error("No managed prefix lists found matching criteria.")
     else:
-        logging.info(f"Found {len(pl_details)} managed prefix list(s).")
+        logging.info(f"Found {len(pl_details)} managed prefix list(s) matching criteria.")
     return pl_details
 
 def search_prefix_list_entries(ec2_client, prefix_list_id, search_value, search_field):
@@ -202,6 +217,7 @@ def main():
     parser.add_argument("--profile", help="AWS CLI profile to use")
     parser.add_argument("--region", help="AWS region to use")
     parser.add_argument("--csv", nargs="?", const=True, help="Output CSV report. Optionally specify a filename.")
+    parser.add_argument("--plfilter", help="Only search prefix lists whose name contains this string (case-insensitive)")
     
     args = parser.parse_args()
     
@@ -230,7 +246,8 @@ def main():
         logging.error(f"Failed to create EC2 client: {e}")
         sys.exit(1)
     
-    pl_details = get_prefix_list_details(ec2_client)
+    # Retrieve prefix lists, applying the optional plfilter if provided.
+    pl_details = get_prefix_list_details(ec2_client, pl_filter=args.plfilter)
     if not pl_details:
         sys.exit(1)
     
