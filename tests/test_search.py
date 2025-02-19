@@ -1,8 +1,16 @@
+"""
+Module: test_search.py
+Unit tests for the search module.
+"""
+
 import unittest
 from modules.search import search_entries_by_field
 
 class TestSearch(unittest.TestCase):
+    """Unit tests for the search_entries_by_field function."""
+
     def test_search_entries_by_field_description(self):
+        """Test searching entries by the 'Description' field (case-insensitive)."""
         entries = [
             {'Description': 'ExampleVendor network block', 'Cidr': '192.168.1.0/24'},
             {'Description': 'Another network block', 'Cidr': '10.0.0.0/24'},
@@ -13,6 +21,7 @@ class TestSearch(unittest.TestCase):
         self.assertEqual(len(result), 2)
 
     def test_search_entries_by_field_cidr(self):
+        """Test searching entries by the 'Cidr' field (supports partial match)."""
         entries = [
             {'Description': 'Network A', 'Cidr': '192.168.1.0/24'},
             {'Description': 'Network B', 'Cidr': '10.0.0.0/29'},
@@ -24,4 +33,3 @@ class TestSearch(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -142,10 +142,14 @@ def audit_command(args):
         if large_entries:
             results.append((pl_id, pl_name, large_entries))
     
+    # Print the final report
+    print("\nFINAL REPORT")
+    print("=" * 60)
     for pl_id, pl_name, entries in results:
-        logging.info(f"{pl_id} | {pl_name} | {len(entries)} matching entries")
+        print(f"{pl_id} | {pl_name} | {len(entries)} matching entries")
         for entry in entries:
-            logging.info(f"  {entry.get('Cidr', 'N/A')} | {entry.get('Description', 'N/A')}")
+            print(f"  {entry.get('Cidr', 'N/A')} | {entry.get('Description', 'N/A')}")
+        print("-" * 60)
     
     if args.csv is not None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
