@@ -2,146 +2,110 @@
 
 ## Overview
 
-This repository provides a modular Python CLI tool for working with AWS Managed Prefix Lists (PLs). The script `plutils.py` consolidates multiple functionalities, allowing you to search, audit, and list prefix lists and their entries.
+This repository contains Python CLI tools for working with AWS Managed Prefix Lists (PLs). These scripts allow you to search, audit, and report on prefix list entries by IP address, partner name, or CIDR range.
 
-## Structure
+## Tools Included
 
-The tool is built with an extensible architecture:
+### 1. `find_prefix_entries.py`
+Search AWS Managed Prefix Lists by IP address or partner name and generate detailed reports. Supports optional CSV output and filtering by prefix list name.
 
-```
-plutils.py         # Main CLI entrypoint
-modules/
-├── aws_helpers.py # AWS API calls: describe prefix lists, get entries, etc.
-├── search.py      # Implements searching/filtering by name or IP
-├── audit.py       # Implements CIDR size filtering (audit functionality)
-├── list.py        # Lists customer-managed prefix lists, sorted and filtered
-└── utils.py       # Logging, CSV report writing, and common utilities
-README.md
-```
+#### Features:
+- **Search by Name or IP:**  
+  Search for prefix list entries by `Description` (case-insensitive) or `Cidr` (supports partial matches).
 
-## Features
+- **Filter by Prefix List Name:**  
+  Use the `--plfilter` option to search only PLs whose name contains a specific string (case-insensitive).
 
-- **List AWS Prefix Lists (Customer-Managed Only)**  
-  Retrieve all AWS-managed prefix lists owned by your AWS account, sorted by name.
-  - Supports filtering (`--plfilter`) and exclusion (`--plexclude`).
+- **Custom AWS Profile and Region:**  
+  Optionally specify an AWS CLI profile and region to target specific accounts or regions.
 
-- **Search AWS Prefix Lists by Name or IP**  
-  Search for entries based on `Description` (case-insensitive) or `Cidr` (supports partial matches).
+- **Quiet Mode:**  
+  Suppress intermediate console output while still logging detailed operations to a log file.
 
-- **Audit Prefix Lists by CIDR Size**  
-  Use `--maxcidr` to specify the maximum CIDR block allowed. Any entry larger than this is reported.
+- **CSV Export:**  
+  Export the final report to CSV with columns for PLID, PLName, Cidr, and Description.
 
-- **Specify AWS Profile and Region**  
-  Optionally target specific AWS accounts or regions using AWS CLI profiles.
+- **Timestamped Logging:**  
+  Automatically generates log files with a timestamp and normalized search term.
 
-- **Quiet Mode for Logging**  
-  Suppress intermediate output while still maintaining detailed log files.
+#### Usage Examples
 
-- **CSV Export**  
-  Generate a CSV report for listing, searching, or auditing results.
-
-## Usage
-
-### **General Usage Format**
+**Search by Name (in Description field):**
 ```bash
-./plutils.py <subcommand> [options]
+./find_prefix_entries.py --name "ExampleVendor"
 ```
 
-### **Available Subcommands:**
-- `list` - List all customer-managed prefix lists, sorted by name.
-- `search` - Search prefix list entries by name or IP.
-- `audit` - Audit prefix lists based on CIDR block size.
-
----
-
-### **List Subcommand**
-
-#### **List all customer-managed prefix lists (sorted by name)**
+**Search by IP (supports partial match):**
 ```bash
-./plutils.py list
+./find_prefix_entries.py --ip "192.168.1"
 ```
 
-#### **Filter prefix lists by name (only include lists containing "ExampleVendor")**
+**Filter Prefix Lists by Name (only check PLs containing "ExampleVendor"):**
 ```bash
-./plutils.py list --plfilter "ExampleVendor"
+./find_prefix_entries.py --name "ExampleVendor" --plfilter "ExampleVendor"
 ```
 
-#### **Exclude prefix lists by name (ignore lists containing "Deprecated")**
+**Specify AWS Profile and Region:**
 ```bash
-./plutils.py list --plexclude "Deprecated"
+./find_prefix_entries.py --name "ExampleVendor" --profile myprofile --region us-east-1
 ```
 
-#### **Specify AWS Profile and Region**
+**Quiet Mode (only logs critical messages to console):**
 ```bash
-./plutils.py list --profile myprofile --region us-east-1
+./find_prefix_entries.py --name "ExampleVendor" --quiet
 ```
 
-#### **Quiet Mode (only logs critical messages to console)**
+**Export Results to CSV:**
 ```bash
-./plutils.py list --quiet
-```
-
-#### **Export List Results to CSV**
-```bash
-./plutils.py list --csv list_results.csv
+./find_prefix_entries.py --name "ExampleVendor" --csv results.csv
 ```
 
 ---
 
-### **Search Subcommand**
+### 2. `find_large_customer_prefix_entries.py`
+Search AWS **customer-managed** Prefix Lists for any IP block larger than a `/29` (i.e., `/28`, `/27`, etc.). Supports optional prefix list filtering by name.
 
-#### **Search by Name (in Description field)**
+#### Features:
+- **Customer-Managed Lists Only:**  
+  The script only checks prefix lists owned by the current AWS account.
+
+- **Filter by Prefix List Name:**  
+  Use the `--plfilter` option to search only PLs whose name contains a specific string (case-insensitive).
+
+- **Custom AWS Profile and Region:**  
+  Optionally specify an AWS CLI profile and region to target specific accounts or regions.
+
+- **Quiet Mode:**  
+  Suppress intermediate console output while still logging detailed operations to a log file.
+
+- **CSV Export:**  
+  Export the final report to CSV with columns for PLID, PLName, Cidr, and Description.
+
+#### Usage Examples
+
+**Find all IP blocks larger than `/29` in customer-managed prefix lists:**
 ```bash
-./plutils.py search --name "ExampleVendor"
+./find_large_customer_prefix_entries.py
 ```
 
-#### **Search by IP (supports partial match)**
+**Filter Prefix Lists by Name (only check PLs containing "ExampleVendor"):**
 ```bash
-./plutils.py search --ip "192.168.1"
+./find_large_customer_prefix_entries.py --plfilter "ExampleVendor"
 ```
 
-#### **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor")**
+**Specify AWS Profile and Region:**
 ```bash
-./plutils.py search --name "ExampleVendor" --plfilter "ExampleVendor"
+./find_large_customer_prefix_entries.py --profile myprofile --region us-east-1
 ```
 
-#### **Exclude Prefix Lists by Name (ignore PLs containing "Deprecated")**
+**Quiet Mode (only logs critical messages to console):**
 ```bash
-./plutils.py search --plexclude "Deprecated"
+./find_large_customer_prefix_entries.py --quiet
 ```
 
-#### **Export Search Results to CSV**
+**Export Results to CSV:**
 ```bash
-./plutils.py search --csv search_results.csv
-```
-
----
-
-### **Audit Subcommand**
-
-#### **Find all IP blocks larger than `/29` (default)**
-```bash
-./plutils.py audit --maxcidr /29
-```
-
-#### **Find all IP blocks larger than `/28`**
-```bash
-./plutils.py audit --maxcidr /28
-```
-
-#### **Filter Prefix Lists by Name (only check PLs containing "ExampleVendor")**
-```bash
-./plutils.py audit --plfilter "ExampleVendor"
-```
-
-#### **Exclude Prefix Lists by Name (ignore PLs containing "Deprecated")**
-```bash
-./plutils.py audit --plexclude "Deprecated"
-```
-
-#### **Export Audit Results to CSV**
-```bash
-./plutils.py audit --csv audit_results.csv
+./find_large_customer_prefix_entries.py --csv results.csv
 ```
 
 ---
@@ -157,23 +121,7 @@ README.md
 
 ## Logging
 
-The script generates timestamped log files in the `logs/` directory (e.g., `logs/plutils-20250218_123456.log`). These logs provide detailed execution records.
-
-## Output Reports
-
-CSV reports generated by the tool are stored in the `reports/` directory.
-
-## Extending the Tool
-
-This tool is modular and extensible. You can add additional functionality by placing new scripts inside the `modules/` directory and updating `plutils.py` to import and integrate them.
-
-### Example Modules:
-
-- **`aws_helpers.py`** - Handles AWS API interactions for fetching prefix lists and their entries.
-- **`search.py`** - Provides search/filtering capabilities for name/IP-based lookups.
-- **`audit.py`** - Handles CIDR size filtering for security/audit use cases.
-- **`list.py`** - Retrieves customer-managed prefix lists, sorted and filtered.
-- **`utils.py`** - Manages logging, CSV generation, and common functions.
+Both scripts generate timestamped log files in the working directory (e.g., `prefixlist_search-examplevendor-20250218_123456.log`). These logs provide detailed execution records.
 
 ## Contributing
 

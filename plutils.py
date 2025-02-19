@@ -5,9 +5,10 @@ AWS Prefix List Utilities CLI
 This tool allows you to search, audit, and list AWS Managed Prefix Lists using subcommands.
 Use the 'search' subcommand to look up prefix list entries by name or IP.
 Use the 'audit' subcommand to filter prefix list entries by CIDR size.
-Use the 'list' subcommand to list all customer-managed prefix lists.
+Use the 'list' subcommand to list customer-managed prefix lists.
 
-Common options such as --profile, --region, --plfilter, and --plexclude apply to all subcommands.
+Common options like --profile, --region, --plfilter, and --plexclude apply to all subcommands.
+The default behavior suppresses console logging; use the -v/--verbose flag to enable screen logging.
 """
 
 import argparse
@@ -22,9 +23,8 @@ from modules.audit import filter_large_cidr_entries
 from modules.utils import setup_logging, write_csv_report
 
 def search_command(args):
-    setup_logging(quiet=args.quiet, filename_prefix="plutils_search")
+    setup_logging(verbose=args.verbose, filename_prefix="plutils_search")
     
-    # Create boto3 session
     session_kwargs = {}
     if args.profile:
         session_kwargs["profile_name"] = args.profile
@@ -38,7 +38,6 @@ def search_command(args):
         logging.error(f"Failed to create EC2 client: {e}")
         sys.exit(1)
     
-    # Retrieve customer-managed prefix lists using the account ID.
     try:
         sts_client = session.client("sts")
         account_id = sts_client.get_caller_identity()["Account"]
@@ -48,7 +47,6 @@ def search_command(args):
     
     prefix_lists = get_managed_prefix_lists(ec2_client, account_id)
     
-    # Further filter using --plfilter and --plexclude
     filtered_pls = {}
     for pl in prefix_lists:
         pl_id = pl.get("PrefixListId")
@@ -63,7 +61,6 @@ def search_command(args):
         logging.error("No prefix lists found after filtering.")
         sys.exit(1)
     
-    # Process each filtered prefix list.
     results = []
     for pl_id, pl_name in filtered_pls.items():
         entries = get_prefix_list_entries(ec2_client, pl_id)
@@ -74,13 +71,11 @@ def search_command(args):
         if entries:
             results.append((pl_id, pl_name, entries))
     
-    # Print report.
     for pl_id, pl_name, entries in results:
         logging.info(f"{pl_id} | {pl_name} | {len(entries)} matching entries")
         for entry in entries:
             logging.info(f"  {entry.get('Cidr', 'N/A')} | {entry.get('Description', 'N/A')}")
     
-    # CSV export if requested.
     if args.csv is not None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         csv_filename = args.csv if args.csv is not True else f"search_report-{timestamp}.csv"
@@ -92,7 +87,7 @@ def search_command(args):
         write_csv_report(csv_filename, header, data_rows)
 
 def audit_command(args):
-    setup_logging(quiet=args.quiet, filename_prefix="plutils_audit")
+    setup_logging(verbose=args.verbose, filename_prefix="plutils_audit")
     
     try:
         maxcidr_value = int(args.maxcidr.replace("/", ""))
@@ -159,7 +154,7 @@ def audit_command(args):
         write_csv_report(csv_filename, header, data_rows)
 
 def list_command(args):
-    setup_logging(quiet=args.quiet, filename_prefix="plutils_list")
+    setup_logging(verbose=args.verbose, filename_prefix="plutils_list")
     
     session_kwargs = {}
     if args.profile:
@@ -216,7 +211,7 @@ def main():
     search_parser.add_argument("--plexclude", help="Exclude prefix lists whose name contains this string (case-insensitive)")
     search_parser.add_argument("--profile", help="AWS CLI profile to use")
     search_parser.add_argument("--region", help="AWS region to use")
-    search_parser.add_argument("--quiet", action="store_true", help="Suppress intermediate output")
+    search_parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose console logging")
     search_parser.add_argument("--csv", nargs="?", const=True, help="Output CSV report. Optionally specify a filename.")
 
     # Subcommand: audit
@@ -226,7 +221,7 @@ def main():
     audit_parser.add_argument("--plexclude", help="Exclude prefix lists whose name contains this string (case-insensitive)")
     audit_parser.add_argument("--profile", help="AWS CLI profile to use")
     audit_parser.add_argument("--region", help="AWS region to use")
-    audit_parser.add_argument("--quiet", action="store_true", help="Suppress intermediate output")
+    audit_parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose console logging")
     audit_parser.add_argument("--csv", nargs="?", const=True, help="Output CSV report. Optionally specify a filename.")
 
     # Subcommand: list
@@ -235,7 +230,7 @@ def main():
     list_parser.add_argument("--plexclude", help="Exclude prefix lists whose name contains this string (case-insensitive)")
     list_parser.add_argument("--profile", help="AWS CLI profile to use")
     list_parser.add_argument("--region", help="AWS region to use")
-    list_parser.add_argument("--quiet", action="store_true", help="Suppress intermediate output")
+    list_parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose console logging")
     list_parser.add_argument("--csv", nargs="?", const=True, help="Output CSV report. Optionally specify a filename.")
 
     args = parser.parse_args()
