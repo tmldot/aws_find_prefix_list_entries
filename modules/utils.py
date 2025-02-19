@@ -3,10 +3,16 @@ import logging
 import csv
 from datetime import datetime
 
-def setup_logging(quiet=False, filename_prefix="plutils"):
+def setup_logging(verbose=False, filename_prefix="plutils"):
     """
     Set up logging to file and console. Returns the log file name.
     Log files are stored in the "logs" subdirectory.
+    By default, console logging is suppressed (only critical messages are shown).
+    Use the verbose flag to enable screen logging.
+    
+    :param verbose: Boolean flag to enable console logging.
+    :param filename_prefix: Prefix for the log file name.
+    :return: The generated log file name.
     """
     # Ensure the logs directory exists.
     logs_dir = "logs"
@@ -18,16 +24,16 @@ def setup_logging(quiet=False, filename_prefix="plutils"):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     
-    # File handler
+    # File handler (always active)
     fh = logging.FileHandler(logfile)
     fh.setLevel(logging.INFO)
     
-    # Console handler
+    # Console handler: enable if verbose, otherwise suppress (only critical messages)
     ch = logging.StreamHandler()
-    if quiet:
-        ch.setLevel(logging.CRITICAL)
-    else:
+    if verbose:
         ch.setLevel(logging.INFO)
+    else:
+        ch.setLevel(logging.CRITICAL)
     
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     fh.setFormatter(formatter)
@@ -43,6 +49,10 @@ def write_csv_report(csv_filename, header, data_rows):
     """
     Write a CSV report with the given header and data rows.
     Reports are stored in the "reports" subdirectory.
+    
+    :param csv_filename: Output CSV file name.
+    :param header: List of column headers.
+    :param data_rows: List of data rows (each row is a list).
     """
     # Ensure the reports directory exists.
     reports_dir = "reports"
