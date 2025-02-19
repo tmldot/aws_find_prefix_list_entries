@@ -1,13 +1,27 @@
 import unittest
 import logging
-import sys
 from modules.utils import setup_logging
 
 class TestLoggingSetup(unittest.TestCase):
     def setUp(self):
-        # Clear all existing handlers before each test
+        # Clear all existing handlers before each test.
         logger = logging.getLogger()
-        logger.handlers = []
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            try:
+                handler.close()
+            except Exception:
+                pass
+
+    def tearDown(self):
+        # Close all handlers after each test.
+        logger = logging.getLogger()
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            try:
+                handler.close()
+            except Exception:
+                pass
 
     def test_setup_logging_verbose(self):
         # When verbose is True, console logging should be enabled (INFO level)
@@ -15,7 +29,7 @@ class TestLoggingSetup(unittest.TestCase):
         # Filter for console handlers (exclude FileHandlers)
         stream_handlers = [
             h for h in logging.getLogger().handlers 
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+            if hasattr(h, "stream") and not isinstance(h, logging.FileHandler)
         ]
         self.assertTrue(stream_handlers, "No console stream handler found")
         for handler in stream_handlers:
@@ -27,7 +41,7 @@ class TestLoggingSetup(unittest.TestCase):
         # Filter for console handlers (exclude FileHandlers)
         stream_handlers = [
             h for h in logging.getLogger().handlers 
-            if isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler)
+            if hasattr(h, "stream") and not isinstance(h, logging.FileHandler)
         ]
         self.assertTrue(stream_handlers, "No console stream handler found")
         for handler in stream_handlers:
