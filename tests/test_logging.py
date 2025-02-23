@@ -22,7 +22,7 @@ class TestLoggingSetup(unittest.TestCase):
             logger.removeHandler(handler)
             try:
                 handler.close()
-            except Exception as ex:
+            except (OSError, ValueError, RuntimeError) as ex:
                 logging.warning("Error closing handler: %s", ex)
 
     def tearDown(self):
@@ -34,7 +34,7 @@ class TestLoggingSetup(unittest.TestCase):
             logger.removeHandler(handler)
             try:
                 handler.close()
-            except Exception as ex:
+            except (OSError, ValueError, RuntimeError) as ex:
                 logging.warning("Error closing handler: %s", ex)
 
     def test_setup_logging_verbose(self):

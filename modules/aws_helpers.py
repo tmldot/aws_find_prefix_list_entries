@@ -6,11 +6,11 @@ handle AWS session setup and prefix list filtering.
 """
 
 import logging
-import boto3
-from botocore.exceptions import ClientError
 from typing import Any, Dict, List, Optional
 
-# A dict type for storing AWS prefix list data
+import boto3
+from botocore.exceptions import ClientError
+
 PrefixListDict = Dict[str, Any]
 
 
@@ -115,3 +115,4 @@ def get_prefix_list_entries(
     except ClientError as exc:
         logging.error("Error retrieving entries for %s: %s", prefix_list_id, exc)
         return []
+    
